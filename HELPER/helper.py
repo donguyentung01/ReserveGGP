@@ -82,6 +82,26 @@ def login(driver, username, password):
         print("Error: Failed at login")
         sys.exit(1)
 
+def set_cookies(driver, session): 
+    """
+    Set cookies of the current session to be the same as of the driver's current weblink
+
+    Parameters:
+    driver
+    session
+
+    Returns:
+    None
+    """
+    cookies = driver.get_cookies()
+    print("SETTING ALL COOKIES")
+    print("-"*20)
+    for cookie in cookies:
+        print("Setting Cookie " + cookie["name"] + " to " + cookie['value'])
+        session.cookies.set(cookie['name'], cookie['value'])
+    print("-"*20)
+
+
 def create_data_form(verification_token, request_data, date, time, email): 
     """
     Create a dictionary representing the data form to submit reservation
@@ -178,7 +198,7 @@ def create_data_form(verification_token, request_data, date, time, email):
 
     return data 
 
-def send_request_book(driver, data_form, URL_submit_reservation="https://reservations.courtreserve.com//Online/ReservationsApi/CreateReservation/12465?uiCulture=en-US"): 
+def send_request_book(session, data_form, URL_submit_reservation="https://reservations.courtreserve.com//Online/ReservationsApi/CreateReservation/12465?uiCulture=en-US"): 
     """
     Send request to submit reservation at Golden Gate Park
 
@@ -190,15 +210,6 @@ def send_request_book(driver, data_form, URL_submit_reservation="https://reserva
     Returns:
     POST request response text (string)
     """
-    session = requests.Session()
-
-    cookies = driver.get_cookies()
-    print("SETTING ALL COOKIES")
-    print("-"*20)
-    for cookie in cookies:
-        print("Setting Cookie " + cookie["name"] + " to " + cookie['value'])
-        session.cookies.set(cookie['name'], cookie['value'])
-    print("-"*20)
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
@@ -301,8 +312,11 @@ def book_court(username, password, date, time):
     #logs = driver.get_log('performance')
     #request_data = getRequestData(logs)
 
+    session = requests.Session() #create new session 
+    set_cookies(driver, session) #set cookies
+    
     data_form = create_data_form(verification_token, request_data, date, time, username) 
-    res = send_request_book(driver, data_form) 
+    res = send_request_book(session, data_form) 
 
     print("Response Text: " + res.text)
 
