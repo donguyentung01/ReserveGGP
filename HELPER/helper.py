@@ -24,9 +24,16 @@ def extract_day(date):
     day = date.split("/")[1] 
     return day 
 
-
-
 def spawn_driver(weblink): #create a web driver at the weblink provided 
+    """
+    Return a Chrome webdriver at the specified weblink 
+
+    Parameters:
+    weblink (string): link for driver to navigate to (e.g. "google.com")
+
+    Returns:
+    driver (webdriver.Chrome())
+    """
     chrome_options = Options()
     #chrome_options.add_argument("--headless")
     #chrome_options.add_experimental_option('w3c', False)
@@ -39,6 +46,17 @@ def spawn_driver(weblink): #create a web driver at the weblink provided
     return driver 
 
 def login(driver, username, password): 
+    """
+    Log in GGP website with specified username and password. 
+
+    Parameters:
+    driver (webdriver.Chrome()): Chrome driver
+    username (string): Golden Gate Park email/username
+    password (string): Golden Gate Park password
+
+    Returns:
+    None 
+    """
     try:
         username_field = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, 'UserNameOrEmail'))
@@ -64,7 +82,20 @@ def login(driver, username, password):
         print("Error: Failed at login")
         sys.exit(1)
 
-def create_data_form(verification_token, request_data, date, time): 
+def create_data_form(verification_token, request_data, date, time, email): 
+    """
+    Create a dictionary representing the data form to submit reservation
+
+    Parameters:
+    verification_token (string): Verification token, derived from <input> tag with id ="_RequestVerificationToken"
+    request_data (string): Request Data, derived from <input> tage with id="RequestData"
+    date (string): Date you want to reserve the court (format: month/date/year, e.g. 3/2/2025) 
+    time (string): Time you want to reserve court (format: hour:minute:second, e.g. 7:30:00)
+    email (string): Golden Gate Park email
+
+    Returns:
+    A dictionary representing the data form to submit reservation.
+    """
     print("SETTING UP DATA FORM")
     print("-"*20)
     print("Setting request data to " + request_data)
@@ -79,7 +110,7 @@ def create_data_form(verification_token, request_data, date, time):
             "OrgMemberFamilyId": 1685674, 
             "FirstName": "Tung", 
             "LastName": "Do", 
-            "Email": "donguyentung2001@gmail.com",
+            "Email": email,
             "MembershipNumber": 6471138, 
             "PaidAmt": "",
             "PriceToPay": 5.5
@@ -147,7 +178,18 @@ def create_data_form(verification_token, request_data, date, time):
 
     return data 
 
-def send_request_book(driver, verification_token, request_data, date, time): 
+def send_request_book(driver, data_form, URL_submit_reservation="https://reservations.courtreserve.com//Online/ReservationsApi/CreateReservation/12465?uiCulture=en-US"): 
+    """
+    Send request to submit reservation at Golden Gate Park
+
+    Parameters:
+    driver: Chrome webdriver 
+    form_data (dictionary): dictionary representing data form to send with POST request
+    URL_submit_reservation (string): URL to send POST request to for submitting reservation
+
+    Returns:
+    POST request response text (string)
+    """
     session = requests.Session()
 
     cookies = driver.get_cookies()
@@ -157,10 +199,6 @@ def send_request_book(driver, verification_token, request_data, date, time):
         print("Setting Cookie " + cookie["name"] + " to " + cookie['value'])
         session.cookies.set(cookie['name'], cookie['value'])
     print("-"*20)
-
-    data = create_data_form(verification_token, request_data, date, time) 
-
-    URL = "https://reservations.courtreserve.com//Online/ReservationsApi/CreateReservation/12465?uiCulture=en-US"
 
     headers = {
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/133.0.0.0 Safari/537.36",
@@ -172,7 +210,9 @@ def send_request_book(driver, verification_token, request_data, date, time):
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8"
     }
     session.headers.update(headers)
-    response = session.post(URL, data=data) 
+
+    #URL_submit_reservation = "https://reservations.courtreserve.com//Online/ReservationsApi/CreateReservation/12465?uiCulture=en-US"
+    response = session.post(URL_submit_reservation, data=data_form) 
     return response
 
 '''
@@ -200,7 +240,6 @@ def send_request_get_time(driver):
     session.headers.update(headers)
     response = session.post(URL, data=data) 
     return response
-'''
 
 def getRequestData(logs):
     for entry in logs:
@@ -222,29 +261,49 @@ def getRequestData(logs):
                     if request_data:
                         return request_data
 
+'''
+
 def book_court(username, password, date, time): 
+    """
+    Book Golden Gate Park pickleball court at specified date, time
+
+    Parameters:
+    username (string): Golden Gate Park username
+    password (string): Golden Gate Park password
+    date (string): Date you want to reserve the court (format: month/date/year, e.g. 3/2/2025) 
+    time (string): Time you want to reserve court (format: hour:minute:second, e.g. 7:30:00)
+
+    Returns:
+    None 
+    """
     formatted_time_with_encoding = convert_time(time)
     day = extract_day(date)
 
     driver = spawn_driver("https://app.courtreserve.com/Online/Reservations/Bookings/12465?sId=16834")
+
     login(driver, username, password) 
-    driver.get("https://app.courtreserve.com/Online/Reservations/Bookings/12465?sId=16834")
+
+    driver.get("https://app.courtreserve.com/Online/Reservations/Bookings/12465?sId=16834") #Navigate to pickleball tab 
     
-    link_element = WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CLASS_NAME, "k-nav-current")))
-    link_element.click()
+    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CLASS_NAME, "k-nav-current"))).click() #click on calendar
+
     WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((By.XPATH, f"//a[@class='k-link' and text()='{day}']"))
-    ).click()
-    WebDriverWait(driver, 10).until(
-        EC.element_to_be_clickable((By.XPATH, f"//a[contains(@data-href, '{formatted_time_with_encoding}&end')]"))
+        EC.element_to_be_clickable((By.XPATH, f"//a[@class='k-link' and text()='{day}']")) #select day
     ).click()
 
-    token_input = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "__RequestVerificationToken")))
-    verification_token = token_input.get_attribute('value')
+    WebDriverWait(driver, 10).until(
+        EC.element_to_be_clickable((By.XPATH, f"//a[contains(@data-href, '{formatted_time_with_encoding}&end')]")) #select timeslot
+    ).click()
 
-    logs = driver.get_log('performance')
-    request_data = getRequestData(logs)
-    
-    res = send_request_book(driver, verification_token, request_data, date, time) 
+    verification_token = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "__RequestVerificationToken"))).get_attribute('value') #get verification token
+    request_data = WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.NAME, "RequestData"))).get_attribute('value') #get request_data
+
+    #logs = driver.get_log('performance')
+    #request_data = getRequestData(logs)
+
+    data_form = create_data_form(verification_token, request_data, date, time, username) 
+    res = send_request_book(driver, data_form) 
+
     print("Response Text: " + res.text)
-    t.sleep(10)
+
+    t.sleep(10) #set sleep timer for debugging
