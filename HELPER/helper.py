@@ -87,8 +87,8 @@ def set_cookies(driver, session):
     Set cookies of the current session to be the same as of the driver's current weblink
 
     Parameters:
-    driver
-    session
+    driver: Chrome web driver
+    session: requests.Session() return object
 
     Returns:
     None
@@ -314,7 +314,7 @@ def book_court(username, password, date, time):
 
     session = requests.Session() #create new session 
     set_cookies(driver, session) #set cookies
-    
+
     data_form = create_data_form(verification_token, request_data, date, time, username) 
     res = send_request_book(session, data_form) 
 
